@@ -5,6 +5,7 @@ class AuthService {
   constructor() {
     this.token = null;
     this.tokenExpiry = 0;
+    this.refreshTimer = null;
   }
 
   async getToken() {
@@ -15,6 +16,28 @@ class AuthService {
 
     // Solicitar nuevo token
     return await this.requestNewToken();
+  }
+
+  scheduleTokenRefresh() {
+    // Cancelar timer anterior si existe
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+    }
+
+    // Calcular cuándo refrescar (5 minutos antes de expirar)
+    const refreshIn = this.tokenExpiry - Date.now() - (5 * 60 * 1000);
+
+    if (refreshIn > 0) {
+      console.log(`⏰ Token se renovará automáticamente en ${Math.round(refreshIn / 1000 / 60)} minutos`);
+      this.refreshTimer = setTimeout(async () => {
+        console.log('🔄 Renovando token automáticamente...');
+        try {
+          await this.requestNewToken();
+        } catch (error) {
+          console.error('Error renovando token automáticamente:', error.message);
+        }
+      }, refreshIn);
+    }
   }
 
   async requestNewToken() {
@@ -36,6 +59,11 @@ class AuthService {
       this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
 
       console.log('✓ Token obtenido exitosamente');
+      console.log(`📅 Token expira en ${Math.round((this.tokenExpiry - Date.now()) / 1000 / 60)} minutos`);
+
+      // Programar renovación automática
+      this.scheduleTokenRefresh();
+
       return this.token;
     } catch (error) {
       console.error('Error obteniendo token:', error.response?.data || error.message);
@@ -46,6 +74,10 @@ class AuthService {
   clearToken() {
     this.token = null;
     this.tokenExpiry = 0;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
   }
 }
 

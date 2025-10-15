@@ -35,7 +35,6 @@ export class SearchService {
   searchWithDebounce(query$: Observable<string>, k: number = this.defaultK): Observable<SearchResult[]> {
     return query$.pipe(
       debounceTime(300),
-      distinctUntilChanged(),
       switchMap(query => this.search(query, k))
     );
   }

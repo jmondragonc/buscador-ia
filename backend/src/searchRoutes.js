@@ -5,6 +5,42 @@ const config = require('./config');
 
 const router = express.Router();
 
+// Función auxiliar para realizar la búsqueda
+async function performSearch(query, k, retryWithNewToken = true) {
+  // Obtener token de autenticación
+  const token = await authService.getToken();
+
+  // URL del endpoint de Microsoft Fabric (con /score al final según documentación)
+  const endpoint = `${config.fabric.apiBaseUrl}/v1/workspaces/${config.fabric.workspaceId}/mlmodels/${config.fabric.modelId}/endpoint/versions/${config.fabric.endpointVersion}/score`;
+
+  const payload = {
+    inputs: [[query.trim(), k]]
+  };
+
+  console.log('Endpoint:', endpoint);
+  console.log('Payload:', JSON.stringify(payload));
+
+  try {
+    const response = await axios.post(endpoint, payload, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30000 // 30 segundos de timeout
+    });
+
+    return response.data;
+  } catch (error) {
+    // Si es error 401 (token expirado) y aún no hemos reintentado, forzar nuevo token
+    if (error.response?.status === 401 && retryWithNewToken) {
+      console.log('Token expirado, solicitando nuevo token...');
+      authService.clearToken();
+      return await performSearch(query, k, false); // Reintentar solo una vez
+    }
+    throw error;
+  }
+}
+
 // Endpoint para búsqueda
 router.post('/search', async (req, res) => {
   try {
@@ -16,28 +52,7 @@ router.post('/search', async (req, res) => {
 
     console.log(`Búsqueda: "${query}" (k=${k})`);
 
-    // Obtener token de autenticación
-    const token = await authService.getToken();
-
-    // URL del endpoint de Microsoft Fabric (con /score al final según documentación)
-    const endpoint = `${config.fabric.apiBaseUrl}/v1/workspaces/${config.fabric.workspaceId}/mlmodels/${config.fabric.modelId}/endpoint/versions/${config.fabric.endpointVersion}/score`;
-
-    const payload = {
-      inputs: [[query.trim(), k]]
-    };
-
-    console.log('Endpoint:', endpoint);
-    console.log('Payload:', JSON.stringify(payload));
-
-    const response = await axios.post(endpoint, payload, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    // Fabric devuelve un objeto con predictions como array de arrays
-    let rawResults = response.data;
+    const rawResults = await performSearch(query, k);
 
     // Log para debug
     console.log('Respuesta de Fabric (tipo):', typeof rawResults);
