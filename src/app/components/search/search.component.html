@@ -1,0 +1,79 @@
+<div class="search-container">
+  <div class="search-header">
+    <h1>Buscador de Productos</h1>
+    <p class="subtitle">Sistema de búsqueda por similitud con TF-IDF</p>
+  </div>
+
+  <div class="search-wrapper">
+    <div class="search-box">
+      <div class="input-container">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          (input)="onSearchInput($event)"
+          (keydown)="onKeyDown($event)"
+          (focus)="onFocus()"
+          (blur)="onBlur()"
+          placeholder="Buscar productos... (ej: cable usb, cemento, fierro)"
+          class="search-input"
+          autocomplete="off"
+        />
+        
+        <div class="loading-spinner" *ngIf="isLoading">
+          <div class="spinner"></div>
+        </div>
+      </div>
+
+      <div class="results-dropdown" *ngIf="showResults && results.length > 0">
+        <div
+          *ngFor="let result of results; let i = index"
+          class="result-item"
+          [class.selected]="i === selectedIndex"
+          (mousedown)="selectResult(result)"
+        >
+          <div class="result-content">
+            <div class="result-name" [innerHTML]="highlightMatch(result.name, searchQuery)"></div>
+            <div class="result-meta">
+              <span class="result-clean-name">{{ result.name_clean }}</span>
+              <span class="result-score" [class.high-score]="result.score > 0.7">
+                {{ getScorePercentage(result.score) }}% coincidencia
+              </span>
+            </div>
+          </div>
+          <div class="result-arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="no-results" *ngIf="showResults && results.length === 0 && !isLoading && searchQuery">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+          <line x1="11" y1="8" x2="11" y2="14"></line>
+          <line x1="11" y1="16" x2="11.01" y2="16"></line>
+        </svg>
+        <p>No se encontraron resultados para "{{ searchQuery }}"</p>
+      </div>
+    </div>
+
+    <div class="search-info" *ngIf="!showResults && !searchQuery">
+      <div class="info-card">
+        <h3>💡 Consejos de búsqueda</h3>
+        <ul>
+          <li>Escribe el nombre del producto que buscas</li>
+          <li>El sistema encuentra productos similares automáticamente</li>
+          <li>Usa las flechas ↑↓ para navegar por los resultados</li>
+          <li>Presiona Enter para seleccionar un resultado</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
